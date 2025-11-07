@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RoadResQ - AI Emergency Response</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+  <div class="custom-cursor"></div>
+  <div class="cursor-trail"></div>
+
+  <div class="animated-bg"></div>
+
+  <nav class="glass-nav">
+    <div class="logo">🚨 RoadResQ</div>
+    <div class="nav-links">
+      <a href="#dashboard">Dashboard</a>
+      <a href="#incidents">Incidents</a>
+      <a href="#map">Live Map</a>
+      <span class="theme-toggle">
+        <span>Light</span>
+        <span class="toggle" id="themeToggle" role="button" aria-label="Toggle theme"></span>
+      </span>
+    </div>
+  </nav>
+
+  <main id="app">
+    <section id="dashboard" class="section">
+      <div class="hero glass-card glass-hover">
+        <img src="assets/logo.svg" alt="RoadResQ" class="logo-img"/>
+        <h1 class="title">AI Emergency Response</h1>
+        <p class="tagline">Voice-first IVR for highway emergencies</p>
+        <button id="startCallBtn" class="btn-primary active-call">Start Emergency Call</button>
+      </div>
+
+      <div class="quick-stats">
+        <div class="stat glass-card"><div class="label">Total Incidents</div><div id="statTotal" class="value">0</div></div>
+        <div class="stat glass-card"><div class="label">Active Cases</div><div id="statActive" class="value">0</div></div>
+        <div class="stat glass-card"><div class="label">Avg Response</div><div id="statAvg" class="value">—</div></div>
+      </div>
+
+      <div class="ivr glass-card">
+        <div class="ivr-header">
+          <div class="state-indicator" id="stateIndicator">Idle</div>
+          <div class="controls">
+            <button id="listenBtn" class="btn-secondary">Listen (S)</button>
+            <button id="resetBtn" class="btn-secondary">Reset (R)</button>
+            <button id="useLocationBtn" class="btn-secondary">Use Current Location</button>
+          </div>
+        </div>
+        <div class="ivr-body">
+          <div class="speech-status">
+            <span id="confDot" class="conf-dot conf-low" title="Confidence"></span>
+            <span id="liveTranscription" class="live-transcription"></span>
+          </div>
+          <div class="progress-wrap">
+            <div id="progressBar" class="progress-bar" style="width:0%"></div>
+          </div>
+          <canvas id="audioVisualizer" width="600" height="100"></canvas>
+          <div id="chat" class="chat"></div>
+          <div class="fallback-input">
+            <input id="textInput" class="glass-input" placeholder="Type your message..."/>
+            <button id="sendTextBtn" class="btn-primary">Send</button>
+          </div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.25rem;">
+            <button id="submitNowBtn" class="btn-primary">Submit Emergency Now</button>
+            <span style="color: var(--text-3); font-size:0.85rem;">Logs with best info so far</span>
+          </div>
+          <div class="quick-actions">
+            <button class="btn-secondary" id="qaMedical">🚑 Medical</button>
+            <button class="btn-secondary" id="qaBreakdown">🔧 Breakdown</button>
+            <button class="btn-secondary" id="qaTheft">🚔 Theft</button>
+          </div>
+          <div class="highway-shortcuts">
+            <span class="hint">Common highways:</span>
+            <button class="btn-secondary" data-hwy="NH16">NH16</button>
+            <button class="btn-secondary" data-hwy="NH44">NH44</button>
+            <button class="btn-secondary" data-hwy="NH48">NH48</button>
+            <button class="btn-secondary" data-hwy="NH1">NH1</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="live-feed glass-card">
+        <h3>Live Incident Feed</h3>
+        <div id="incidentFeed" class="feed"></div>
+      </div>
+    </section>
+
+    <section id="incidents" class="section">
+      <div class="dashboard-container">
+        <div class="dashboard-header glass-card">
+          <h2>Incident Dashboard</h2>
+          <div class="filters">
+            <select id="filterType" class="glass-input">
+              <option value="">All Types</option>
+              <option value="medical">Medical</option>
+              <option value="breakdown">Breakdown</option>
+              <option value="theft">Theft</option>
+            </select>
+            <select id="filterStatus" class="glass-input">
+              <option value="">All Status</option>
+              <option value="Pending">Pending</option>
+              <option value="Assigned">Assigned</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+            <input type="text" id="searchBox" class="glass-input" placeholder="Search ID, type, status, location...">
+            <button id="exportAllBtn" class="btn-secondary">Export All (E)</button>
+          </div>
+        </div>
+        <div class="glass-card">
+          <h3 style="margin-top:0">Improve Understanding</h3>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <input id="trainPhrase" class="glass-input" placeholder="Training phrase (e.g., car overheated)"/>
+            <select id="trainType" class="glass-input">
+              <option value="medical">Medical</option>
+              <option value="breakdown">Breakdown</option>
+              <option value="theft">Theft</option>
+            </select>
+            <button id="trainBtn" class="btn-secondary">Add Training</button>
+          </div>
+        </div>
+        <div class="incident-table glass-card">
+          <table id="incidentTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Sub-service</th>
+                <th>Location</th>
+                <th>People</th>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="map" class="section">
+      <div class="glass-card">
+        <h2>Live Map</h2>
+        <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; margin-bottom:0.5rem;">
+          <button id="mapLocateBtn" class="btn-secondary">Use My Location</button>
+          <span id="currentLocLabel" style="color: var(--text-3); font-size:0.9rem;">Location: —</span>
+        </div>
+        <div id="mapContainer">
+          <div id="mapEl" style="height: 420px; width: 100%;"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="shortcutsOverlay" class="shortcuts-overlay hidden glass-card">
+    <h3>Keyboard Shortcuts</h3>
+    <ul>
+      <li>1 — Medical</li>
+      <li>2 — Breakdown</li>
+      <li>3 — Theft</li>
+      <li>S — Start listening</li>
+      <li>R — Reset dialog</li>
+      <li>E — Export all incidents</li>
+      <li>? — Toggle this help</li>
+    </ul>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
+
+
